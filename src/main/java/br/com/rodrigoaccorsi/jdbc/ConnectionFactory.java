@@ -1,6 +1,8 @@
 package br.com.rodrigoaccorsi.jdbc;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.bson.Document;
 import org.springframework.stereotype.Component;
@@ -15,9 +17,7 @@ public class ConnectionFactory {
 
 	public final String DATABASE_URI = "mongodb://localhost:27017";
 	public final String DATABASE_DB = "teste_sicredi";
-
-	private MongoCollection<Document> collection;
-	
+	private Map<String, MongoCollection<Document>> collectionsMap;
 	private static ConnectionFactory instance;
 
 	public enum collections {
@@ -28,12 +28,15 @@ public class ConnectionFactory {
 	};
 
 	public MongoCollection<Document> getCollection(String collectionName) {
-		if(collection == null) {
-			collection = new MongoClient(new MongoClientURI(DATABASE_URI))
+		if(collectionsMap == null) {
+			collectionsMap = new HashMap<>();
+		} 
+		if(collectionsMap.get(collectionName) == null) {
+			collectionsMap.put(collectionName, new MongoClient(new MongoClientURI(DATABASE_URI))
 					.getDatabase(DATABASE_DB)
-					.getCollection(collectionName);
+					.getCollection(collectionName));
 		}
-		return collection;
+		return collectionsMap.get(collectionName);
 	}
 
 	public static void main(String[] args) {
