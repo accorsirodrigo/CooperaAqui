@@ -8,11 +8,14 @@ import org.bson.Document;
 import org.springframework.stereotype.Component;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
 
 import br.com.rodrigoaccorsi.jdbc.ConnectionFactory;
+import br.com.rodrigoaccorsi.model.People;
 import br.com.rodrigoaccorsi.patterns.DAOPattern;
 import br.com.rodrigoaccorsi.routes.response.Response;
 import br.com.rodrigoaccorsi.routes.response.ResponseBuilder;
+import br.com.rodrigoaccorsi.routes.util.RoutesUtils;
 
 @Component
 public class PeopleDAO implements DAOPattern {
@@ -48,7 +51,14 @@ public class PeopleDAO implements DAOPattern {
 
 	@Override
 	public Response getDocumentByObjectId(String objectId) {
-		// TODO Auto-generated method stub
-		return null;
+		Document doc = collection.find(Filters.eq("objectId", objectId)).first();
+		if(doc == null) {
+			return null;
+		}
+		People people = RoutesUtils.castStrJsonToObject(
+				doc.toJson(), People.class);
+		return new ResponseBuilder()
+				.withObject(people)
+				.build();
 	}
 }

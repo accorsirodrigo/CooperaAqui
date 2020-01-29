@@ -8,13 +8,11 @@ import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.google.gson.JsonObject;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 
 import br.com.rodrigoaccorsi.jdbc.ConnectionFactory;
-import br.com.rodrigoaccorsi.model.Agenda;
 import br.com.rodrigoaccorsi.model.Votation;
 import br.com.rodrigoaccorsi.patterns.DAOPattern;
 import br.com.rodrigoaccorsi.routes.response.Response;
@@ -65,7 +63,9 @@ public class VotationDAO implements DAOPattern {
 	@Override
 	public Votation getDocumentByObjectId(String objectId) {
 		Document docVotation = collection.find(Filters.eq("objectId", objectId)).first();
-
+		if(docVotation == null) {
+			return null;
+		}
 		return RoutesUtils.castStrJsonToObject(docVotation.toJson(), Votation.class);
 	}
 

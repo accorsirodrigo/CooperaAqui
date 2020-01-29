@@ -2,31 +2,24 @@ package br.com.rodrigoaccorsi.routes;
 
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.websocket.server.PathParam;
 
 import org.apache.http.HttpStatus;
-import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
-import br.com.rodrigoaccorsi.DAO.AgendaDAO;
+import br.com.rodrigoaccorsi.DAO.PeopleDAO;
 import br.com.rodrigoaccorsi.DAO.VotationDAO;
 import br.com.rodrigoaccorsi.DAO.VoteDAO;
 import br.com.rodrigoaccorsi.model.Votation;
@@ -46,6 +39,9 @@ public class VoteRoute extends RoutesResponse implements RoutesPattern {
 	@Autowired
 	private VotationDAO votationDao;
 
+	@Autowired
+	private PeopleDAO peopleDao;
+
 	@RequestMapping(
 			value = "/create", 
 			method = RequestMethod.POST, 
@@ -54,25 +50,40 @@ public class VoteRoute extends RoutesResponse implements RoutesPattern {
 	public @ResponseBody Response handleCreate(@RequestBody String json, HttpServletResponse httpResponse, HttpServletRequest httpRequest) throws IOException {
 		Vote vote = RoutesUtils.castStrJsonToObject(json, Vote.class);
 		Response response;
-		if(vote.getVote() == null || StringUtils.isEmpty(vote.getVotationId())) {
+		if(vote.getVote() == null || StringUtils.isEmpty(vote.getVotationId()) 
+				|| vote.getPeopleId() == null || StringUtils.isEmpty(vote.getPeopleId())) {
 			response = new ResponseBuilder()
-					.withMessage("Parameters 'vote' and 'votationId' can't be null.")
+					.withMessage("Parameters 'vote', 'votationId' and 'peopleId' can't be null.")
 					.withSuccess(false)
 					.withResponseCode(HttpStatus.SC_BAD_REQUEST)
 					.build();
+		} else if(peopleDao.getDocumentByObjectId(vote.getPeopleId()) == null) { 
+			response = new ResponseBuilder()
+					.withMessage("People not found.")
+					.withSuccess(false)
+					.withResponseCode(HttpStatus.SC_NOT_FOUND)
+					.build();
 		} else {
 			Votation votation = votationDao.getDocumentByObjectId(vote.getVotationId());
-			Timestamp newTime = new Timestamp(votation.getCreateTime().getTime());
-			newTime.setTime(newTime.getTime() + TimeUnit.MINUTES.toMillis(votation.getVotationTime()));
-
-			if(votation.getCreateTime().before(newTime)) {
-				response = voteDao.createEntry(new Gson().toJson(vote));
-			} else {
+			if(votation == null ) {
 				response = new ResponseBuilder()
-						.withMessage("Votation closed")
+						.withMessage("Votation not found.")
 						.withSuccess(false)
-						.withResponseCode(HttpStatus.SC_OK)
+						.withResponseCode(HttpStatus.SC_NOT_FOUND)
 						.build();
+			} else {
+				Timestamp newTime = new Timestamp(votation.getCreateTime().getTime());
+				newTime.setTime(newTime.getTime() + TimeUnit.MINUTES.toMillis(votation.getVotationTime()));
+
+				if(votation.getCreateTime().before(newTime)) {
+					response = voteDao.createEntry(new Gson().toJson(vote));
+				} else {
+					response = new ResponseBuilder()
+							.withMessage("Votation closed")
+							.withSuccess(false)
+							.withResponseCode(HttpStatus.SC_OK)
+							.build();
+				}
 			}
 		}
 		setResponse(response, httpResponse, httpRequest);
